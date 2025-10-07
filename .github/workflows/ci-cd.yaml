@@ -54,10 +54,12 @@ jobs:
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/demo-app:latest
 
       # 8️⃣ Déploiement sur Kubernetes (namespace test)
-      - name: Deploy to Kubernetes
-        uses: azure/setup-kubectl@v3  # On utilise kubectl
-        with:
-          version: '1.29.0'
+      - name: Deploy to Kubernetes - Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
       - name: Apply manifests
         run: |
           kubectl apply -f manifests/ -n test
