@@ -1,19 +1,23 @@
-FROM alpine:latest
+FROM python:3.12-alpine
 
-# Installer nginx et bash
+# Installer nginx et dépendances
 RUN apk add --no-cache nginx bash
 
-# Copier les fichiers
+# Installer Flask et PyMongo
+RUN pip install flask pymongo
+
+# Copier les fichiers Flask
+WORKDIR /app
+COPY app.py /app/app.py
 COPY index.html /usr/share/nginx/html/index.html
-COPY start.sh /start.sh
 COPY nginx.conf /etc/nginx/nginx.conf
-
-
-# Rendre start.sh exécutable
+COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
-# Exposer le port
-EXPOSE 80
+# Exposer les ports Flask et NGINX
+EXPOSE 80 5000
 
-# Démarrer le container
+# Convertir les fins de ligne Windows en UNIX et corriger les droits
+RUN sed -i 's/\r$//' /start.sh && chmod +x /start.sh
+
 CMD ["/start.sh"]
