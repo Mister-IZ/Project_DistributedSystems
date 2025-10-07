@@ -8,8 +8,8 @@ RUN pip install flask pymongo
 
 # Copier les fichiers Flask
 WORKDIR /app
-COPY app.py /app/app.py
-COPY templates/index.html /usr/share/nginx/html/index.html
+COPY app/app.py /app/app.py
+COPY app/templates/index.html /usr/share/nginx/html/index.html
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
