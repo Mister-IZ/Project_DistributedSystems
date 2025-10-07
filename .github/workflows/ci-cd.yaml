@@ -57,7 +57,7 @@ jobs:
       - name: Deploy to Kubernetes
         uses: azure/setup-kubectl@v3  # On utilise kubectl
         with:
-          version: '1.30.0'
+          version: '1.29.0'
       - name: Apply manifests
         run: |
           kubectl apply -f manifests/ -n test
