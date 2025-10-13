@@ -12,13 +12,12 @@ spec:
           serviceAccountName: auto-sync-sa
           containers:
           - name: auto-sync
-            image: bitnami/kubectl:latest
+            image: alpine/k8s:1.30.8  # ← CETTE IMAGE A DÉJÀ curl ET jq !
             command:
-              - /bin/bash
+              - /bin/sh
               - -c
               - |
-                apt-get update && apt-get install -y curl jq  # ⬅️ CHANGE apt EN apt-get
-                bash /scripts/check-and-update.sh
+                bash /scripts/check-and-update.sh  # ← DIRECT, PAS BESOIN D'INSTALLER !
             volumeMounts:
               - name: scripts
                 mountPath: /scripts

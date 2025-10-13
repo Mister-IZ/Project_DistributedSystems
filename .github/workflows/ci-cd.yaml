@@ -47,11 +47,13 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/demo-app:latest .
+          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/demo-app:${{ github.sha }} .
 
       # 7️⃣ Push sur Docker Hub
       - name: Push Docker image
         run: |
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/demo-app:latest
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/demo-app:${{ github.sha }} 
 
       # 8️⃣ Déploiement sur Kubernetes (namespace test)
       - name: Deploy to Kubernetes - Install kubectl
