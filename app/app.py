@@ -13,7 +13,17 @@ db = client["demoDB"]
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return """
+    <html>
+    <body>
+        <h1>🚀 TEST Environment - Auto-update WORKING!</h1>
+        <p>Hostname: <strong>TEST-POD</strong></p>
+        <p>✅ Auto-update system: <strong>OPERATIONAL</strong></p>
+        <p>🎯 Ready for 14/10 demonstration!</p>
+    </body>
+    </html>
+    """
+    # return render_template("index.html")
 
 @app.route("/hosts")
 def get_hosts():

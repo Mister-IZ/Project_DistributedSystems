@@ -4,7 +4,7 @@ metadata:
   name: demo-app
   namespace: test
 spec:
-  replicas: 2  # ⬅️ 2 replicas pour TEST au lieu de 3
+  replicas: 2
   selector:
     matchLabels:
       app: demo-app
@@ -15,14 +15,9 @@ spec:
     spec:
       containers:
       - name: demo-app
-        image: ibrahimmmm/demo-app:latest  # ⬅️ Ton image Docker Hub
+        image: ibrahimmmm/demo-app:latest  # ⬅️ Ton image sur Docker Hub
         ports:
-        - containerPort: 5000  # ⬅️ Port de Flask
-        env:
-        - name: HOSTNAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
+        - containerPort: 80  # ⬅️ IMPORTANT : port 80 pour Nginx
 ---
 apiVersion: v1
 kind: Service
