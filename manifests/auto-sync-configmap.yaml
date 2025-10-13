@@ -12,21 +12,27 @@ data:
     DEPLOYMENT="demo-app"
     IMAGE_REPO="ibrahimmmm/demo-app"
 
+    echo "🔍 Vérification des mises à jour..."
+
     # Récupère l'image actuellement déployée
     CURRENT_IMAGE=$(kubectl get deployment $DEPLOYMENT -n $NAMESPACE -o jsonpath='{.spec.template.spec.containers[0].image}')
 
-    # Récupère le dernier tag sur DockerHub
-    LATEST_TAG=$(curl -s https://hub.docker.com/v2/repositories/${IMAGE_REPO}/tags?page_size=1 | jq -r '.results[0].name')
-    LATEST_IMAGE="${IMAGE_REPO}:${LATEST_TAG}"
+    echo "📦 Image déployée : $CURRENT_IMAGE"
 
-    echo "🔍 Image actuelle : $CURRENT_IMAGE"
-    echo "🔎 Dernière image : $LATEST_IMAGE"
+    # Récupère le digest SHA de l'image latest sur Docker Hub
+    LATEST_DIGEST=$(curl -s "https://hub.docker.com/v2/repositories/${IMAGE_REPO}/tags/latest" | jq -r '.images[0].digest' 2>/dev/null || echo "unknown")
 
-    # Compare et met à jour si nécessaire
-    if [ "$CURRENT_IMAGE" != "$LATEST_IMAGE" ]; then
-      echo "🚀 Nouvelle version détectée, mise à jour du déploiement..."
-      kubectl set image deployment/$DEPLOYMENT demo-app=$LATEST_IMAGE -n $NAMESPACE
-      echo "✅ Déploiement mis à jour avec succès!"
+    # Récupère le digest de l'image actuelle (via les pods)
+    CURRENT_DIGEST=$(kubectl get pods -n $NAMESPACE -l app=demo-app -o jsonpath='{.items[0].status.containerStatuses[0].imageID}' 2>/dev/null | cut -d'@' -f2 || echo "unknown")
+
+    echo "🔄 Digest actuel : $CURRENT_DIGEST"
+    echo "🆕 Digest latest : $LATEST_DIGEST"
+
+    # Si les digests sont différents, on restart
+    if [ "$CURRENT_DIGEST" != "$LATEST_DIGEST" ] && [ "$LATEST_DIGEST" != "unknown" ] && [ "$LATEST_DIGEST" != "null" ]; then
+        echo "🚀 Nouvelle image détectée ! Mise à jour en cours..."
+        kubectl rollout restart deployment/$DEPLOYMENT -n $NAMESPACE
+        echo "✅ Redémarrage du déploiement déclenché !"
     else
-      echo "✅ Image déjà à jour, aucune action nécessaire."
+        echo "✅ Déploiement déjà à jour."
     fi

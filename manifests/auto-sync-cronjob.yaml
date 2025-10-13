@@ -17,7 +17,7 @@ spec:
               - /bin/bash
               - -c
               - |
-                apt update && apt install -y curl jq
+                apt-get update && apt-get install -y curl jq  # ⬅️ CHANGE apt EN apt-get
                 bash /scripts/check-and-update.sh
             volumeMounts:
               - name: scripts
