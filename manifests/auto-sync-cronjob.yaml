@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: auto-sync-demo-app
+  namespace: test
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: auto-sync-sa
+          containers:
+          - name: auto-sync
+            image: bitnami/kubectl:latest
+            command:
+              - /bin/bash
+              - -c
+              - |
+                apt update && apt install -y curl jq
+                bash /scripts/check-and-update.sh
+            volumeMounts:
+              - name: scripts
+                mountPath: /scripts
+          restartPolicy: OnFailure
+          volumes:
+            - name: scripts
+              configMap:
+                name: auto-sync-script
