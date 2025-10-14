@@ -149,7 +149,7 @@ def home():
           Cette démo utilise <strong>Flask</strong> directement pour servir le contenu.  
           Quand vous rafraîchissez la page, vous pouvez observer que le hostname change en fonction du pod qui répond, ce qui illustre la <strong>répartition de charge</strong> entre plusieurs replicas.
           <br><br>
-          <strong>ENVIRONMENT: TEST</strong> - Auto-update activé ✅
+          <strong>ENVIRONMENT: Ici on est en TEST</strong> - On rebuild à partir de docker hub ✅
         </div>
       </div>
 
@@ -173,7 +173,7 @@ def home():
             <li>MongoDB est déployé en <strong>StatefulSet</strong> pour garantir l'identité persistante de chaque pod et la réplication des données.</li>
             <li>Chaque pod a un <strong>hostname unique</strong> affiché dans la page, permettant de visualiser quel pod répond à la requête.</li>
             <li>Cette démo montre comment un cluster Kubernetes gère la <strong>réplication</strong>, la <strong>disponibilité</strong> et l'<strong>affichage dynamique</strong> des données.</li>
-            <li><strong>SYSTÈME D'AUTO-UPDATE</strong> : Les nouvelles versions sont déployées automatiquement en TEST toutes les 5 minutes.</li>
+            <li><strong>Dans TEST il y a un SYSTÈME D'AUTO-UPDATE</strong> : Les nouvelles versions sont déployées automatiquement en TEST toutes les 5 minutes.</li>
           </ul>
         </div>
       </div>
