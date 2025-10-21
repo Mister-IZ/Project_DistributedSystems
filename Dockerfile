@@ -3,8 +3,8 @@ FROM python:3.12-alpine
 # Installer nginx et dépendances
 RUN apk add --no-cache nginx bash
 
-# Installer Flask et PyMongo
-RUN pip install flask pymongo
+# Installer ce qu'il faut 
+RUN pip install flask pymongo redis
 
 # Copier les fichiers Flask
 WORKDIR /app
