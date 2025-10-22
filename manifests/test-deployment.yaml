@@ -15,9 +15,16 @@ spec:
     spec:
       containers:
       - name: demo-app
-        image: ibrahimmmm/demo-app:latest  # ⬅️ Ton image sur Docker Hub
+        image: ibrahimmmm/demo-app:latest
         ports:
-        - containerPort: 80  # ⬅️ IMPORTANT : port 80 pour Nginx
+        - containerPort: 80  # ⬅️ Flask sur port 5000
+        env:
+        - name: MONGODB_URI
+          value: "mongodb://mongo-0.mongo.test.svc.cluster.local:27017,mongo-1.mongo.test.svc.cluster.local:27017,mongo-2.mongo.test.svc.cluster.local:27017/?replicaSet=rs0"
+        - name: REDIS_HOST
+          value: "redis-service.test"
+        - name: ENVIRONMENT
+          value: "test"
 ---
 apiVersion: v1
 kind: Service

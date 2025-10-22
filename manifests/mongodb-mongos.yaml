@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-mongos
+  namespace: dev
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mongo-mongos
+  template:
+    metadata:
+      labels:
+        app: mongo-mongos
+    spec:
+      containers:
+      - name: mongos
+        image: mongo:7.0
+        command:
+          - mongos
+          - "--bind_ip_all"
+          - "--port"
+          - "27017"
+          - "--configdb"
+          - "rs-config/mongo-config-0.mongo-config.dev.svc.cluster.local:27017,mongo-config-1.mongo-config.dev.svc.cluster.local:27017,mongo-config-2.mongo-config.dev.svc.cluster.local:27017"
+        ports:
+        - containerPort: 27017
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-mongos
+  namespace: dev
+spec:
+  ports:
+    - port: 27017
+      targetPort: 27017
+  selector:
+    app: mongo-mongos
+  type: ClusterIP
