@@ -14,11 +14,6 @@ COPY nginx.conf /etc/nginx/nginx.conf
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
-# Variables d'environnement par défaut
-ENV MONGODB_URI="mongodb://mongo-mongos.dev.svc.cluster.local:27017/?directConnection=true"
-ENV REDIS_HOST="redis-service.dev"
-ENV ENVIRONMENT="dev"
-
 # Exposer les ports Flask et NGINX
 EXPOSE 80 5000
 

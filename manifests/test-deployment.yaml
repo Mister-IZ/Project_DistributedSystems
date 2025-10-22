@@ -20,7 +20,7 @@ spec:
         - containerPort: 80  # ⬅️ Flask sur port 5000
         env:
         - name: MONGODB_URI
-          value: "mongodb://mongo-0.mongo.test.svc.cluster.local:27017,mongo-1.mongo.test.svc.cluster.local:27017,mongo-2.mongo.test.svc.cluster.local:27017/?replicaSet=rs0"
+          value: "mongodb://mongo-0.mongo.test.svc.cluster.local:27017,mongo-1.mongo.test.svc.cluster.local:27017,mongo-2.mongo.test.svc.cluster.local:27017/demoDB?replicaSet=rs0"
         - name: REDIS_HOST
           value: "redis-service.test"
         - name: ENVIRONMENT

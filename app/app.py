@@ -28,11 +28,20 @@ try:
     
     # Test supplémentaire pour déterminer le type de connexion
     try:
-        config_db = client["config"]
-        list(config_db.list_collections())  # Cette DB n'existe que dans le sharding
-        mongodb_status += " (Sharding)"
+        # Méthode plus fiable pour détecter le sharding
+        is_mongos = client.is_mongos
+        if is_mongos:
+            mongodb_status += " (Sharding)"
+        else:
+            mongodb_status += " (Réplication)"
     except:
-        mongodb_status += " (Réplication)"
+        # Fallback : vérifier si la DB config existe (sharding)
+        try:
+            config_db = client["config"]
+            config_db.list_collection_names()
+            mongodb_status += " (Sharding)"
+        except:
+            mongodb_status += " (Réplication)"
         
 except Exception as e:
     mongodb_status = f"❌ MongoDB Erreur: {str(e)}"
