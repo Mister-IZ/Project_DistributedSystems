@@ -20,7 +20,7 @@ spec:
         - containerPort: 5000
         env:
         - name: MONGODB_URI
-          value: "mongodb://mongo-mongos.dev.svc.cluster.local:27017/?directConnection=true"
+          value: "mongodb://mongo-mongos.dev:27017/?directConnection=true"
         - name: REDIS_HOST
           value: "redis-service.dev"
         - name: ENVIRONMENT

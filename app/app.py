@@ -461,5 +461,288 @@ def sharding_info():
             "environment": ENVIRONMENT
         })
 
+@app.route("/user-dashboard")
+def user_dashboard():
+    """Page simplifiée de gestion users"""
+    hostname = socket.gethostname()
+    
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>User Management - {ENVIRONMENT.upper()}</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }}
+            .container {{ display: grid; gap: 20px; grid-template-columns: 1fr 1fr; max-width: 1000px; margin: 0 auto; }}
+            .card {{ background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+            button {{ background: #2196f3; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin: 5px; }}
+            button:hover {{ background: #1976d2; }}
+            .user-item {{ background: #f8f9fa; margin: 8px 0; padding: 12px; border-radius: 5px; border-left: 4px solid #2196f3; }}
+        </style>
+    </head>
+    <body>
+        <h1>👥 User Management Dashboard - {ENVIRONMENT.upper()}</h1>
+        <p><strong>Pod:</strong> {hostname} | <strong>MongoDB:</strong> {mongodb_status} | <strong>Redis:</strong> {redis_status}</p>
+        
+        <div class="container">
+            <!-- Stats -->
+            <div class="card">
+                <h3>📊 Statistics</h3>
+                <p>Total Users: <strong id="user-count">-</strong></p>
+                <p>Total Orders: <strong id="order-count">-</strong></p>
+                <div style="margin-top: 15px;">
+                    <button onclick="loadSampleData()">📥 Load Sample Data</button>
+                    <button onclick="refreshStats()">🔄 Refresh</button>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="card">
+                <h3>⚡ Actions</h3>
+                <button onclick="addRandomUser()">👤 Add Random User</button>
+                <button onclick="addRandomOrder()">🛒 Add Random Order</button>
+                <button onclick="runMigration()">🔧 Run Migration</button>
+                <button onclick="clearAllData()">🗑️ Clear All Data</button>
+            </div>
+        </div>
+        
+        <!-- Users List -->
+        <div class="card" style="margin-top: 20px;">
+            <h3>👤 Recent Users</h3>
+            <div id="user-list">Loading...</div>
+        </div>
+
+        <script>
+            async function refreshStats() {{
+                try {{
+                    const [stats, users] = await Promise.all([
+                        fetch('/api/stats').then(r => r.json()),
+                        fetch('/api/users').then(r => r.json())
+                    ]);
+                    
+                    document.getElementById('user-count').textContent = stats.total_users;
+                    document.getElementById('order-count').textContent = stats.total_orders;
+                    
+                    document.getElementById('user-list').innerHTML = users.map(user => `
+                        <div class="user-item">
+                            <strong>${{user.name}}</strong> (${{user.email}})<br>
+                            <small>Orders: ${{user.order_count}} | Country: ${{user.country}}</small>
+                        </div>
+                    `).join('');
+                    
+                }} catch (error) {{
+                    document.getElementById('user-list').innerHTML = 'Error loading data';
+                }}
+            }}
+            
+            async function loadSampleData() {{
+                const response = await fetch('/api/load-sample-data', {{ method: 'POST' }});
+                const result = await response.json();
+                alert(`✅ ${{result.message}}`);
+                refreshStats();
+            }}
+            
+            async function addRandomUser() {{
+                await fetch('/api/random-user', {{ method: 'POST' }});
+                refreshStats();
+            }}
+            
+            async function addRandomOrder() {{
+                const response = await fetch('/api/random-order', {{ method: 'POST' }});
+                const result = await response.json();
+                alert(`✅ Order added for ${{result.user_name}} - €${{result.amount}}`);
+                refreshStats();
+            }}
+            
+            async function runMigration() {{
+                const response = await fetch('/api/run-migration', {{ method: 'POST' }});
+                const result = await response.json();
+                alert(`✅ Migration applied to ${{result.migrated_users}} users`);
+                refreshStats();
+            }}
+            
+            async function clearAllData() {{
+                if (confirm('Are you sure you want to delete ALL data?')) {{
+                    await fetch('/api/clear-data', {{ method: 'DELETE' }});
+                    alert('All data cleared!');
+                    refreshStats();
+                }}
+            }}
+            
+            // Load data on page load
+            refreshStats();
+        </script>
+    </body>
+    </html>
+    '''
+
+# API endpoints simplifiés
+@app.route("/api/stats")
+def api_stats():
+    """Retourne les statistiques globales"""
+    try:
+        total_users = db.users.count_documents({})
+        total_orders = db.orders.count_documents({})
+        return jsonify({
+            "total_users": total_users,
+            "total_orders": total_orders
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/users")
+def api_users():
+    """Retourne la liste des utilisateurs"""
+    try:
+        users = list(db.users.find({}, {"_id": 0}).sort("_id", -1).limit(10))
+        return jsonify(users)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/load-sample-data", methods=["POST"])
+def load_sample_data():
+    """Charge des données d'exemple simples"""
+    try:
+        # Nettoyer les anciennes données
+        db.users.delete_many({})
+        db.orders.delete_many({})
+        
+        # Créer 5 utilisateurs de test
+        sample_users = [
+            {
+                "user_id": "user_1", "name": "Alice Dupont", "email": "alice@example.com", 
+                "country": "France", "order_count": 3, "total_spent": 150.50
+            },
+            {
+                "user_id": "user_2", "name": "Bob Martin", "email": "bob@example.com", 
+                "country": "Belgium", "order_count": 1, "total_spent": 45.00
+            },
+            {
+                "user_id": "user_3", "name": "Charlie Wilson", "email": "charlie@example.com", 
+                "country": "Germany", "order_count": 7, "total_spent": 320.75
+            },
+            {
+                "user_id": "user_4", "name": "Diana Lopez", "email": "diana@example.com", 
+                "country": "Spain", "order_count": 2, "total_spent": 89.99
+            },
+            {
+                "user_id": "user_5", "name": "Eve Chen", "email": "eve@example.com", 
+                "country": "Italy", "order_count": 0, "total_spent": 0
+            }
+        ]
+        
+        # Créer quelques commandes
+        sample_orders = [
+            {"order_id": "order_1", "user_id": "user_1", "user_name": "Alice Dupont", "amount": 75.25},
+            {"order_id": "order_2", "user_id": "user_1", "user_name": "Alice Dupont", "amount": 45.00},
+            {"order_id": "order_3", "user_id": "user_2", "user_name": "Bob Martin", "amount": 30.25},
+            {"order_id": "order_4", "user_id": "user_3", "user_name": "Charlie Wilson", "amount": 120.50}
+        ]
+        
+        db.users.insert_many(sample_users)
+        db.orders.insert_many(sample_orders)
+        
+        return jsonify({
+            "message": f"Sample data loaded: {len(sample_users)} users, {len(sample_orders)} orders"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/random-user", methods=["POST"])
+def add_random_user():
+    """Ajoute un utilisateur aléatoire"""
+    try:
+        import random
+        first_names = ["Emma", "Lucas", "Lea", "Hugo", "Chloe", "Louis", "Camille", "Arthur"]
+        last_names = ["Martin", "Bernard", "Dubois", "Thomas", "Robert", "Richard", "Petit"]
+        countries = ["France", "Belgium", "Germany", "Spain", "Italy", "Netherlands"]
+        
+        name = f"{random.choice(first_names)} {random.choice(last_names)}"
+        user_id = f"user_{random.randint(1000, 9999)}"
+        
+        new_user = {
+            "user_id": user_id,
+            "name": name,
+            "email": f"{name.lower().replace(' ', '.')}@example.com",
+            "country": random.choice(countries),
+            "order_count": 0,
+            "total_spent": 0
+        }
+        
+        db.users.insert_one(new_user)
+        return jsonify({"message": "Random user added", "user_name": name})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/random-order", methods=["POST"])
+def add_random_order():
+    """Ajoute une commande aléatoire"""
+    try:
+        import random
+        
+        # Trouver un utilisateur aléatoire
+        users = list(db.users.find({}))
+        if not users:
+            return jsonify({"error": "No users found"}), 400
+            
+        user = random.choice(users)
+        order_id = f"order_{random.randint(10000, 99999)}"
+        amount = round(random.uniform(10, 200), 2)
+        
+        new_order = {
+            "order_id": order_id,
+            "user_id": user["user_id"],
+            "user_name": user["name"],
+            "amount": amount
+        }
+        
+        # Ajouter la commande
+        db.orders.insert_one(new_order)
+        
+        # Mettre à jour les stats de l'utilisateur
+        db.users.update_one(
+            {"user_id": user["user_id"]},
+            {"$inc": {"order_count": 1, "total_spent": amount}}
+        )
+        
+        return jsonify({
+            "message": "Random order added",
+            "user_name": user["name"],
+            "amount": amount
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/run-migration", methods=["POST"])
+def run_migration():
+    """Exécute une migration de schéma simple"""
+    try:
+        from datetime import datetime
+        
+        # Migration: Ajouter un champ de timestamp à tous les utilisateurs
+        result = db.users.update_many(
+            {"created_at": {"$exists": False}},
+            {"$set": {"created_at": datetime.utcnow(), "schema_version": 1}}
+        )
+        
+        return jsonify({
+            "message": "Migration completed",
+            "migrated_users": result.modified_count
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/clear-data", methods=["DELETE"])
+def clear_data():
+    """Vide toutes les données"""
+    try:
+        db.users.delete_many({})
+        db.orders.delete_many({})
+        if redis_available:
+            redis_client.delete('hosts_data')
+        return jsonify({"message": "All data cleared"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
