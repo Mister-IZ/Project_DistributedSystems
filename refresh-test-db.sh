@@ -1,119 +1,160 @@
 #!/bin/bash
-# refresh-test-db.sh - VERSION AMÉLIORÉE
+# refresh-test-db.sh - VERSION ANONYMIZATION PARTIELLE
 
-echo "🔄 Rafraîchissement DB TEST depuis DEV (partiel + anonymisé)"
+echo "🔄 Rafraîchissement DB TEST depuis DEV (noms anonymisés)"
 
-# 1. Export PARTIEL depuis DEV (seulement les données récentes)
-echo "📦 Export des données récentes depuis DEV..."
-kubectl exec -n dev deployment/mongo-mongos -- mongosh --eval "
-use demoDB
-
-// Exporter seulement les users avec commandes récentes
-const recentUsers = db.users.aggregate([
-    {
-        \$lookup: {
-            from: 'orders',
-            localField: 'user_id',
-            foreignField: 'user_id',
-            as: 'user_orders'
-        }
-    },
-    {
-        \$match: {
-            'user_orders': { \$ne: [] }
-        }
-    },
-    {
-        \$limit: 20  // ← SEULEMENT 20 users max pour TEST
+# 1. VÉRIFIER que DEV a des données
+echo "🔍 Vérification DEV..."
+RESULT=$(kubectl exec -n dev deployment/mongo-mongos -- mongosh demoDB --eval "
+try {
+    const users = db.users.countDocuments()
+    const orders = db.orders.countDocuments()
+    
+    if (users === 0) {
+        print('ERROR:NO_USERS')
+        quit(1)
     }
-]).toArray()
-
-// Exporter les commandes de ces users
-const userIds = recentUsers.map(u => u.user_id)
-const recentOrders = db.orders.find({ 
-    user_id: { \$in: userIds } 
-}).limit(50).toArray()  // ← SEULEMENT 50 commandes
-
-print('Exporting ' + recentUsers.length + ' users and ' + recentOrders.length + ' orders')
-db.temp_export.drop()
-db.temp_export.insert({ 
-    users: recentUsers, 
-    orders: recentOrders,
-    export_date: new Date()
-})
-" 
-
-# 2. Dump de la collection temporaire
-kubectl exec -n dev deployment/mongo-mongos -- mongodump --db demoDB --collection temp_export --archive > /tmp/dev_partial.archive
-
-# 3. Nettoyage côté DEV
-kubectl exec -n dev deployment/mongo-mongos -- mongosh --eval "db.temp_export.drop()"
-
-# 4. Restauration dans TEST
-echo "📥 Import des données vers TEST..."
-cat /tmp/dev_partial.archive | kubectl exec -n test mongo-0 -i -- mongorestore --archive --drop
-
-# 5. Extraction et anonymisation dans TEST
-echo "🎭 Reconstruction et anonymisation dans TEST..."
-kubectl exec -n test mongo-0 -- mongosh --eval "
-use demoDB
-
-// Récupérer les données exportées
-const exportData = db.temp_export.findOne()
-if (!exportData) {
-    print('❌ No data to import')
-    exit(1)
+    
+    print('SUCCESS:' + users + ' users, ' + orders + ' orders')
+    
+} catch (e) {
+    print('ERROR:' + e.message)
+    quit(1)
 }
+" --quiet)
 
-// Vider les collections existantes
-db.users.deleteMany({})
-db.orders.deleteMany({})
+echo "Résultat: $RESULT"
+if [[ "$RESULT" == *"ERROR"* ]]; then
+    echo "❌ Problème avec DEV: $RESULT"
+    echo "💡 Chargez des données: http://demo.local/user-dashboard → Load Sample Data"
+    exit 1
+fi
 
-// Réinsérer les users avec anonymisation
-exportData.users.forEach(user => {
-    db.users.insertOne({
-        user_id: user.user_id,
-        name: user.name.charAt(0) + 'XXXXX',  // Anonymiser le nom
-        email: user.name.charAt(0).toLowerCase() + 'xxxxx@test.com',  // Email anonyme
-        country: user.country,
-        order_count: user.order_count,
-        total_spent: user.total_spent,
-        // Champs spécifiques TEST
+echo "✅ DEV a des données"
+
+# 2. TRANSFERT AVEC ANONYMIZATION PARTIELLE
+echo "📦 Transfert DEV → TEST (noms anonymisés, emails conservés)..."
+
+kubectl exec -n dev deployment/mongo-mongos -- mongosh demoDB --eval "
+try {
+    print('🔍 Récupération des données DEV...')
+    
+    // Prendre un échantillon de données
+    const users = db.users.find().limit(10).toArray()
+    const orders = db.orders.find().limit(15).toArray()
+    
+    print('📊 Données trouvées: ' + users.length + ' users, ' + orders.length + ' orders')
+    
+    // ANONYMIZATION PARTIELLE : Noms seulement
+    const testUsers = users.map(u => ({
+        user_id: u.user_id,
+        name: 'User_' + u.user_id,  // ← NOM ANONYMISÉ
+        email: u.email,             // ← EMAIL CONSERVÉ
+        country: u.country,
+        order_count: u.order_count,
+        total_spent: u.total_spent,
         environment: 'test',
-        source: 'dev_export',
+        source: 'dev_refresh_anon',
+        original_name: u.name,      // ← POUR DÉMONSTRATION
         imported_date: new Date(),
-        // Reproduire les migrations si nécessaire
-        created_at: user.created_at || new Date(),
-        schema_version: user.schema_version || 1
-    })
-})
-
-// Réinsérer les orders avec randomisation
-exportData.orders.forEach(order => {
-    db.orders.insertOne({
-        order_id: 'test_' + order.order_id,  // Préfixe TEST
-        user_id: order.user_id,
-        user_name: order.user_name.charAt(0) + 'XXXXX',  // Nom anonymisé
-        amount: Math.round(order.amount * (0.5 + Math.random() * 0.5)),  // Montant aléatoire ±50%
-        status: order.status,
+        created_at: u.created_at,
+        schema_version: u.schema_version || 1
+    }))
+    
+    const testOrders = orders.map(o => ({
+        order_id: o.order_id,
+        user_id: o.user_id,
+        user_name: 'User_' + o.user_id,  // ← NOM ANONYMISÉ
+        amount: o.amount,
+        status: o.status,
         environment: 'test',
-        source: 'dev_export',
+        source: 'dev_refresh_anon',
         imported_date: new Date()
+    }))
+    
+    print('🎯 Données préparées pour TEST:')
+    print('   👤 ' + testUsers.length + ' users (noms anonymisés)')
+    print('   📧 Emails conservés pour traçabilité')
+    print('   🛒 ' + testOrders.length + ' orders')
+    
+    // Afficher quelques exemples
+    print('   📝 Exemples:')
+    testUsers.slice(0, 2).forEach(u => {
+        print('      - ' + u.original_name + ' → ' + u.name + ' (' + u.email + ')')
     })
-})
-
-// Nettoyer la collection temporaire
-db.temp_export.drop()
-
-// Stats finales
-print('✅ Import TEST terminé:')
-print('👥 Users: ' + db.users.countDocuments())
-print('🛒 Orders: ' + db.orders.countDocuments())
-print('🏷️ Tous les orders préfixés avec \"test_\"')
+    
+    // Convertir en JSON
+    const usersJson = JSON.stringify(testUsers)
+    const ordersJson = JSON.stringify(testOrders)
+    
+    // Script pour TEST
+    const testScript = \`
+        use demoDB
+        
+        // Vider les collections existantes
+        db.users.deleteMany({})
+        db.orders.deleteMany({})
+        
+        // Insérer les nouvelles données
+        if (\${usersJson}.length > 0) {
+            db.users.insertMany(\${usersJson})
+        }
+        if (\${ordersJson}.length > 0) {
+            db.orders.insertMany(\${ordersJson})
+        }
+        
+        // Résultat
+        const finalUsers = db.users.countDocuments()
+        const finalOrders = db.orders.countDocuments()
+        print('🎉 RAFRAÎCHISSEMENT RÉUSSI: ' + finalUsers + ' users, ' + finalOrders + ' orders')
+        
+        if (finalUsers > 0) {
+            const sample = db.users.findOne()
+            print('📝 Exemple final:')
+            print('   👤 Nom: ' + sample.name + ' (anonymisé)')
+            print('   📧 Email: ' + sample.email + ' (original)')
+            print('   🏷️ Source: ' + sample.source)
+            print('   🔍 Original: ' + sample.original_name)
+        }
+    \`
+    
+    // Écrire et exécuter
+    require('fs').writeFileSync('/tmp/refresh_script.js', testScript)
+    
+} catch (e) {
+    print('❌ Erreur: ' + e.message)
+    quit(1)
+}
 "
 
-# 6. Nettoyage
-rm -f /tmp/dev_partial.archive
+# 3. Exécuter dans TEST
+echo "📥 Exécution dans TEST..."
+kubectl exec -n dev deployment/mongo-mongos -- cat /tmp/refresh_script.js | kubectl exec -n test mongo-0 -i -- mongosh --quiet
 
-echo "✅ Base TEST rafraîchie avec succès !"
-echo "🌐 Accéder à: http://test.demo.local/user-dashboard"
+# 4. Vérification finale
+echo "✅ Vérification finale..."
+kubectl exec -n test mongo-0 -- mongosh demoDB --eval "
+print('')
+print('📊 BASE TEST RAFRAÎCHIE:')
+print('👥 Users: ' + db.users.countDocuments() + ' (noms anonymisés)')
+print('🛒 Orders: ' + db.orders.countDocuments())
+print('')
+print('🔍 TRACABILITÉ:')
+print('   📧 Emails conservés pour montrer la provenance')
+print('   👤 Noms anonymisés (User_XXX)')
+print('   🏷️ Source: dev_refresh_anon')
+print('')
+print('📝 Données exemple:')
+db.users.find().limit(3).forEach(u => {
+    print('   👤 ' + u.name + ' (' + u.email + ')')
+    print('   🔍 Original: ' + u.original_name)
+    print('   🏷️ ' + u.environment + ' | ' + u.source)
+    print('')
+})
+print('🌐 Vérifiez: http://test.demo.local/user-dashboard')
+"
+
+echo ""
+echo "✅ RAFRAÎCHISSEMENT TERMINÉ!"
+echo "💡 Noms anonymisés mais emails conservés pour traçabilité"
+echo "🎯 Parfait pour démontrer la provenance des données !"

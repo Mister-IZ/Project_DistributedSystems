@@ -594,7 +594,7 @@ def api_stats():
 def api_users():
     """Retourne la liste des utilisateurs"""
     try:
-        users = list(db.users.find({}, {"_id": 0}).sort("_id", -1).limit(10))
+        users = list(db.users.find({}, {"_id": 0}).sort("_id", -1).limit(100))
         return jsonify(users)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -610,23 +610,23 @@ def load_sample_data():
         # Créer 5 utilisateurs de test
         sample_users = [
             {
-                "user_id": "user_1", "name": "Alice Dupont", "email": "alice@example.com", 
+                "user_id": "user_1", "name": "Alice Dupont", "email": "alice@ecam.be", 
                 "country": "France", "order_count": 3, "total_spent": 150.50
             },
             {
-                "user_id": "user_2", "name": "Bob Martin", "email": "bob@example.com", 
+                "user_id": "user_2", "name": "Bob Martin", "email": "bob@ecam.be", 
                 "country": "Belgium", "order_count": 1, "total_spent": 45.00
             },
             {
-                "user_id": "user_3", "name": "Charlie Wilson", "email": "charlie@example.com", 
+                "user_id": "user_3", "name": "Charlie Wilson", "email": "charlie@ecam.be", 
                 "country": "Germany", "order_count": 7, "total_spent": 320.75
             },
             {
-                "user_id": "user_4", "name": "Diana Lopez", "email": "diana@example.com", 
+                "user_id": "user_4", "name": "Diana Lopez", "email": "diana@ecam.be", 
                 "country": "Spain", "order_count": 2, "total_spent": 89.99
             },
             {
-                "user_id": "user_5", "name": "Eve Chen", "email": "eve@example.com", 
+                "user_id": "user_5", "name": "Eve Chen", "email": "eve@ecam.be", 
                 "country": "Italy", "order_count": 0, "total_spent": 0
             }
         ]
@@ -653,7 +653,7 @@ def add_random_user():
     """Ajoute un utilisateur aléatoire"""
     try:
         import random
-        first_names = ["Emma", "Lucas", "Lea", "Hugo", "Chloe", "Louis", "Camille", "Arthur"]
+        first_names = ["Timothé", "Samir", "Ayoub", "Abelbadi", "Haitam", "Nabil", "Edin", "Arthur"]
         last_names = ["Martin", "Bernard", "Dubois", "Thomas", "Robert", "Richard", "Petit"]
         countries = ["France", "Belgium", "Germany", "Spain", "Italy", "Netherlands"]
         
@@ -663,7 +663,7 @@ def add_random_user():
         new_user = {
             "user_id": user_id,
             "name": name,
-            "email": f"{name.lower().replace(' ', '.')}@example.com",
+            "email": f"{name.lower().replace(' ', '.')}@ecam.be",
             "country": random.choice(countries),
             "order_count": 0,
             "total_spent": 0

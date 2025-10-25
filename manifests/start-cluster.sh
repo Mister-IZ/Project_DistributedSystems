@@ -68,11 +68,40 @@ echo "🔍  Vérification des pods MongoDB..."
 kubectl get pods -n dev | grep mongo
 kubectl get pods -n test | grep mongo
 
+# 🔧 CORRECTION MONGOS QUIESCE MODE - NOUVEAU
+echo "🔧  Résolution du problème mongos quiesce mode..."
+echo "⏳  Attente étendue pour la stabilité MongoDB (60 secondes)..."
+sleep 60
+
+# Vérifier que tous les pods sont vraiment prêts
+echo "🔍  Vérification finale des pods MongoDB..."
+kubectl get pods -n dev | grep mongo
+
+# Redémarrer mongos pour forcer la reconnexion
+echo "🔄  Redémarrage de mongos..."
+kubectl rollout restart deployment/mongo-mongos -n dev
+
+echo "⏳  Attente du redémarrage de mongos (30 secondes)..."
+sleep 30
+
+# Vérifier que mongos fonctionne
+echo "🔍  Test de connexion mongos..."
+if kubectl exec -n dev deployment/mongo-mongos -- mongosh --eval "db.adminCommand('ping')" --quiet >/dev/null 2>&1; then
+    echo "✅  Mongos opérationnel"
+else
+    echo "❌  Mongos toujours en erreur - tentative de récupération..."
+    # Solution de secours : supprimer et recréer mongos
+    kubectl delete deployment/mongo-mongos -n dev --ignore-not-found=true
+    sleep 10
+    kubectl apply -f mongodb-mongos.yaml -n dev
+    sleep 30
+fi
+
 # 7. Configuration du sharding (SEULEMENT SI MONGOS EST PRÊT)
 echo "⚙️  Configuration du sharding MongoDB..."
 if [ -f "setup-sharding.sh" ]; then
     # Vérifier que mongos est en cours d'exécution
-    if kubectl get pods -n dev | grep mongo-mongos | grep Running >/dev/null; then
+    if kubectl exec -n dev deployment/mongo-mongos -- mongosh --eval "db.adminCommand('ping')" --quiet >/dev/null 2>&1; then
         chmod +x setup-sharding.sh
         echo "🔄  Lancement de la configuration sharding..."
         ./setup-sharding.sh
