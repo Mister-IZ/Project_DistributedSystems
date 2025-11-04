@@ -8,6 +8,8 @@
 5. [Monitoring et Scaling](#4-monitoring-et-scaling)
 6. [Guide d'Onboarding](#5-guide-donboarding)
 
+7. [Guide de démonstration de l'ensemble](./app/README.md)
+
 ---
 
 ## 🎯 Vue d'ensemble
@@ -356,8 +358,8 @@ kubectl get all -n test
 git checkout -b feature/ma-nouvelle-feature
 # Développer, tester
 pytest -v
-docker build -t demo-app:test .
-docker run -p 5000:5000 demo-app:test
+docker build -t demo-app:latest .
+docker run -p 5000:5000 demo-app:latest
 git add .
 git commit -m "feat: description de la fonctionnalité"
 git push origin feature/ma-nouvelle-feature

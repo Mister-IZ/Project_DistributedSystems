@@ -1,82 +1,115 @@
 #!/bin/bash
-echo "🚀 Configuration du Sharding MongoDB..."
+echo "🚀 SHARDING - VERSION FINALE TESTÉE"
 
-# Attendre que tous les services soient vraiment prêts
-echo "⏳ Attente supplémentaire pour la stabilité des services..."
-sleep 30
-
-# 1. Vérifier que les config servers sont accessibles
-echo "🔍 Vérification des config servers..."
-kubectl exec -n dev mongo-config-0 -- mongosh --eval "
-rs.initiate({
-  _id: 'rs-config',
-  configsvr: true,
-  members: [
-    { _id: 0, host: 'mongo-config-0.mongo-config.dev.svc.cluster.local:27017' },
-    { _id: 1, host: 'mongo-config-1.mongo-config.dev.svc.cluster.local:27017' },
-    { _id: 2, host: 'mongo-config-2.mongo-config.dev.svc.cluster.local:27017' }
-  ]
-})" || echo "⚠️ Config servers peut-être déjà initialisés"
-
-# 2. Attendre que les config servers soient stables
-sleep 15
-
-# 3. Initialiser le shard
-echo "🔧 Initialisation du shard replica set..."
-kubectl exec -n dev mongo-shard-0 -- mongosh --eval "
-rs.initiate({
-  _id: 'rs-shard',
-  members: [
-    { _id: 0, host: 'mongo-shard-0.mongo-shard.dev.svc.cluster.local:27017' },
-    { _id: 1, host: 'mongo-shard-1.mongo-shard.dev.svc.cluster.local:27017' },
-    { _id: 2, host: 'mongo-shard-2.mongo-shard.dev.svc.cluster.local:27017' }
-  ]
-})" || echo "⚠️ Shard peut-être déjà initialisé"
-
-# 4. Attendre plus longtemps pour la stabilité
-echo "⏳ Attente de stabilisation des replica sets (30 secondes)..."
-sleep 30
-
-# 5. REDÉMARRER mongos pour qu'il prenne en compte la config
-echo "🔄 Redémarrage de mongos..."
-kubectl rollout restart deployment/mongo-mongos -n dev
-
-# Attendre que mongos redémarre
-echo "⏳ Attente du redémarrage de mongos (20 secondes)..."
-sleep 20
-
-# 6. Maintenant configurer le sharding
-echo "⚙️ Configuration du sharding via mongos..."
-
-# Vérifier d'abord que mongos est connecté aux config servers
+# Exécuter directement les commandes MongoDB
 kubectl exec -n dev deployment/mongo-mongos -- mongosh --eval "
-db.adminCommand({ listShards: 1 })
-" || echo "❌ Mongos ne peut pas accéder aux config servers"
+print('🎯 Début configuration sharding...');
 
-# Ajouter le shard
-kubectl exec -n dev deployment/mongo-mongos -- mongosh --eval "
-sh.addShard('rs-shard/mongo-shard-0.mongo-shard.dev.svc.cluster.local:27017')
+// 1. Ajouter shard
+try {
+    sh.addShard('rs-shard/mongo-shard-0.mongo-shard.dev.svc.cluster.local:27017');
+    print('✅ Shard ajouté');
+} catch(e) { 
+    print('ℹ️ Shard: ' + e.message); 
+}
+
+// 2. Activer sharding
+try {
+    sh.enableSharding('demoDB');
+    print('✅ Sharding activé sur demoDB');
+} catch(e) { 
+    print('ℹ️ Sharding: ' + e.message); 
+}
+
+// 3. Préparer la base
+print('🗂️ Préparation des collections...');
+db = db.getSiblingDB('demoDB');
+
+try { 
+    db.dropDatabase();
+    print('✅ Base demoDB réinitialisée');
+} catch(e) { 
+    print('ℹ️ Base: ' + e.message); 
+}
+
+// Recréer les collections
+db.createCollection('users');
+db.createCollection('orders');
+db.createCollection('hosts');
+print('✅ Collections créées');
+
+// 4. Sharder users
+try {
+    db.users.createIndex({ user_id: 'hashed' });
+    sh.shardCollection('demoDB.users', { user_id: 'hashed' });
+    print('✅ Users shardé sur user_id');
+} catch(e) { 
+    print('❌ Users: ' + e.message); 
+}
+
+// 5. Sharder orders
+try {
+    db.orders.createIndex({ order_id: 'hashed' });
+    sh.shardCollection('demoDB.orders', { order_id: 'hashed' });
+    print('✅ Orders shardé sur order_id');
+} catch(e) { 
+    print('❌ Orders: ' + e.message); 
+}
+
+// 6. Sharder hosts
+try {
+    db.hosts.createIndex({ _id: 'hashed' });
+    sh.shardCollection('demoDB.hosts', { _id: 'hashed' });
+    print('✅ Hosts shardé sur _id');
+} catch(e) { 
+    print('❌ Hosts: ' + e.message); 
+}
+
+print('🔍 Vérification finale...');
 "
 
-# Activer le sharding
+# Vérification détaillée
+echo "🔍 VÉRIFICATION DÉTAILLÉE..."
 kubectl exec -n dev deployment/mongo-mongos -- mongosh --eval "
-sh.enableSharding('demoDB')
+print('=== SHARDING STATUS ===');
+sh.status();
+
+print('\\\\n=== DÉTAILS demoDB ===');
+var dbInfo = db.getSiblingDB('config').databases.findOne({_id: 'demoDB'});
+if (dbInfo) {
+    print('demoDB partitioned: ' + dbInfo.partitioned);
+    print('demoDB primary: ' + dbInfo.primary);
+} else {
+    print('❌ demoDB non trouvée');
+}
+
+print('\\\\n=== COLLECTIONS ===');
+db = db.getSiblingDB('demoDB');
+var collections = db.getCollectionNames();
+print('Collections: ' + JSON.stringify(collections));
+
+collections.forEach(function(coll) {
+    try {
+        var stats = db[coll].stats();
+        print('- ' + coll + ': sharded=' + stats.sharded + ', count=' + stats.count);
+    } catch(e) {
+        print('- ' + coll + ': erreur');
+    }
+});
 "
 
-# Créer la collection shardée
-kubectl exec -n dev deployment/mongo-mongos -- mongosh --eval "
-use demoDB
-db.createCollection('users')
-db.users.createIndex({ _id: 'hashed' })
-sh.shardCollection('demoDB.users', { _id: 'hashed' })
+# Test final CRITIQUE
+echo "🎯 TEST FINAL CRITIQUE..."
+kubectl exec -n dev deployment/mongo-mongos -- mongosh demoDB --eval "
+try {
+    var result = db.users.getShardDistribution();
+    print('✅✅✅ SUCCÈS! Users shardé:');
+    print(JSON.stringify(result, null, 2));
+} catch(e) {
+    print('❌❌❌ ÉCHEC - Users pas shardé: ' + e.message);
+    print('Détail erreur: ' + e);
+}
 "
 
-# Créer aussi la collection hosts pour l'app existante
-kubectl exec -n dev deployment/mongo-mongos -- mongosh --eval "
-use demoDB
-db.createCollection('hosts') 
-db.hosts.createIndex({ _id: 'hashed' })
-sh.shardCollection('demoDB.hosts', { _id: 'hashed' })
-"
-
-echo "✅ Sharding MongoDB configuré avec succès !"
+echo ""
+echo "🎉 CONFIGURATION TERMINÉE!"
