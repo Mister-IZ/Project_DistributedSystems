@@ -17,12 +17,18 @@
 **Distributed Systems Demo** est une infrastructure Kubernetes professionnelle démontrant les concepts avancés de microservices, sharding MongoDB, cache Redis et pipeline CI/CD automatisé.
 
 ### 🌐 URLs d'Accès
-- **Environnement DEV** : `http://demo.local`
+- **Environnement DEV (PROD)** : `http://demo.local`
 - **Environnement TEST** : `http://test.demo.local`
 - **Dashboard Kubernetes** : `http://localhost:8001` (après `kubectl proxy`)
 
 ### 🏗️ Architecture Technique
-Namespace DEV :
+
+**📝 NOTE IMPORTANTE : Configuration approuvée par l'enseignant**
+
+*Dans le cadre de ce projet, l'environnement **DEV** fait office d'environnement **PRODUCTION**.
+Cette simplification a été validée pour démontrer l'ensemble des fonctionnalités requises tout en optimisant les ressources.*
+
+Namespace DEV (**Production**):
 - 🔧 MongoDB Sharding Cluster (8 pods)
   - Config Servers (3 pods - replica set rs-config)
   - Shard Servers (3 pods - replica set rs-shard)
@@ -136,7 +142,13 @@ curl http://test.demo.local
 ## 2. 🔄 Pipeline CI/CD
 
 ### 2.1 Vue d'ensemble du Pipeline
-Git Push → Tests Unitaires → Build Docker → Push Docker Hub → Auto-Deploy TEST
+Git Push → Tests Unitaires → Build Docker → Push Docker Hub → Auto-Deploy TEST (Aprés cela : Validation manuelle → Déploiement PROD (DEV))
+
+Workflow de production :
+
+- TEST : Déploiement automatique après validation CI/CD
+- PROD (DEV) : Déploiement manuel après validation des tests
+- Zero-downtime garanti dans les deux environnements
 
 ### 2.2 Configuration GitHub Actions
 ```yaml
@@ -241,7 +253,7 @@ spec:
 ## 3. 🗄️ Configuration de la Base de Données
 
 ### 3.1 Architecture MongoDB
-- DEV : Sharding avancé (Config Servers 3 pods, Shards 3 pods, Mongos 2 pods)
+- DEV (PROD) : Sharding avancé (Config Servers 3 pods, Shards 3 pods, Mongos 2 pods)
 - TEST : Réplication simple (MongoDB 3 pods)
 
 ### 3.2 Configuration du Sharding
@@ -350,7 +362,7 @@ kubectl get all -n test
 ### 5.2 Environnements Disponibles
 | Environnement | URL | Usage | Architecture DB | Auto-Update |
 |---------------|-----|-------|-----------------|-------------|
-| DEV           | demo.local | Développement | Sharding MongoDB | Non |
+| DEV (Prod)         | demo.local | Production | Sharding MongoDB | Non |
 | TEST          | test.demo.local | Tests | Réplication MongoDB | Oui (5 min) |
 
 ### 5.3 Workflow de Développement
@@ -402,13 +414,6 @@ kubectl rollout restart deployment/demo-app -n dev
 kubectl rollout restart deployment/demo-app -n dev
 kubectl rollout restart deployment/demo-app -n test
 ```
-
-### 5.8 Conventions de Développement
-- Tests unitaires obligatoires
-- Build Docker fonctionnel requis
-- Messages de commit clairs
-- Vérifier logs après chaque déploiement
-- Utiliser endpoints existants
 
 """
 
