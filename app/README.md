@@ -1,4 +1,3 @@
-"""
 # 🎬 Démonstration de l'ensemble
 
 ---
