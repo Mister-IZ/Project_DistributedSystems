@@ -8,7 +8,7 @@
 5. [Monitoring et Scaling](#4-monitoring-et-scaling)
 6. [Guide d'Onboarding](#5-guide-donboarding)
 
-7. [Guide de démonstration de l'ensemble](./app/README.md)
+7. [---- Guide de démonstration de l'ensemble ----](./app/README.md)
 
 ---
 
@@ -343,7 +343,7 @@ kubectl get pods -n dev
 kubectl get pods -n test
 kubectl rollout status deployment/demo-app -n dev
 ```
-Ou bien juste allez sur le dashboard Kubernetes et mettre à l'échelles les réplicas qu'on souhaite scaller.
+Ou bien juste allez sur le dashboard Kubernetes et mettre à l'échelle les réplicas qu'on souhaite scaller.
 
 ---
 
