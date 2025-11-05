@@ -25,10 +25,39 @@ print('\\\\n🎯 ORDERS - Shardé sur order_id:');
 var ordersDist = db.orders.getShardDistribution();
 print(JSON.stringify(ordersDist, null, 2));
 
-print('\\\\n📊 RÉSUMÉ:');
-print('• ' + db.users.countDocuments() + ' users → ' + usersDist.chunks + ' chunks');
-print('• ' + db.orders.countDocuments() + ' orders → ' + ordersDist.chunks + ' chunks');
-print('✅ SHARDING ACTIF - Données réparties automatiquement');
+print('✅ SHARDING ACTIF ET OPÉRATIONNEL');
+"
+
+# 1.3.1 - Analyse des Chunks et Comportement
+echo "=== 🔍 ANALYSE CHUNKS MONGODB ==="
+kubectl exec -n dev deployment/mongo-mongos -- mongosh demoDB --eval "
+print('📈 COMPORTEMENT INTELLIGENT DU SHARDING:');
+
+print('👤 USERS - ' + db.users.countDocuments() + ' documents:');
+var usersDist = db.users.getShardDistribution();
+if (usersDist.value) {
+    var shardData = Object.values(usersDist.value)[0];
+    print('• Chunks: ' + shardData.chunks);
+    print('• Documents par chunk: ' + shardData['estimated docs per chunk']);
+    print('• Taille par chunk: ' + shardData['estimated data per chunk']);
+}
+
+print('');
+print('🛒 ORDERS - ' + db.orders.countDocuments() + ' documents:');
+var ordersDist = db.orders.getShardDistribution();
+if (ordersDist.value) {
+    var shardData = Object.values(ordersDist.value)[0];
+    print('• Chunks: ' + shardData.chunks);
+    print('• Documents par chunk: ' + shardData['estimated docs per chunk']);
+    print('• Taille par chunk: ' + shardData['estimated data per chunk']);
+}
+
+print('');
+print('🎯 EXPLICATION:');
+print('• MongoDB crée 2 chunks INITIAUX par défaut');
+print('• Les chunks se DIVISENT AUTOMATIQUEMENT à ~64MB');
+print('• Tes données: ... << 64MB → reste à 2 chunks');
+print('• Scalabilité: + de données = + de chunks automatiquement');
 "
 
 # 1.4 - MongoDB Réplication (TEST)
