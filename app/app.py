@@ -166,7 +166,7 @@ def home():
     <body>
 
     <header>
-      <h1>Distributed Systems Demo <span class="badge">Flask + MongoDB + Redis</span></h1>
+      <h1>Distributed Systems EXAMEEEEEEN <span class="badge">Flask + MongoDB + Redis</span></h1>
     </header>
 
     <div class="container">
