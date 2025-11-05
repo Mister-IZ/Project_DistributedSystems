@@ -169,9 +169,37 @@ echo "✅ Données DEV → TEST transférées avec anonymisation"
 
 ## PHASE 6 : 🔁 AUTO-SYNC & SUPERVISION
 ```bash
+# Vérification de l'auto-sync CI/CD
+echo "=== 🤖 AUTO-SYNC CI/CD - HISTORIQUE COMPLET ==="
+
+# 1. Statut du CronJob
 kubectl get cronjobs -n test
-kubectl logs -n test -l job-name=auto-sync-demo-app --tail=2
-echo "✅ Auto-sync actif - Mise à jour TEST toutes les 5 minutes"
+
+# 2. Historique des 3 dernières exécutions
+echo ""
+echo "📜 3 DERNIÈRES VÉRIFICATIONS:"
+kubectl get jobs -n test --sort-by=.status.startTime | findstr auto-sync | Select-Object -Last 3
+
+# 3. Logs des 3 dernières exécutions
+echo ""
+echo "📝 HISTORIQUE DES LOGS:"
+$ALL_PODS = kubectl get pods -n test --sort-by=.status.startTime | findstr auto-sync | Select-Object -Last 3
+
+if ($ALL_PODS) {
+    $ALL_PODS | ForEach-Object {
+        $POD_NAME = ($_ -split '\s+')[0]
+        $POD_AGE = ($_ -split '\s+')[4]  # Récupère l'âge
+        echo ""
+        echo "--- $POD_NAME ($POD_AGE) ---"
+        kubectl logs -n test $POD_NAME
+        echo "----------------------------"
+    }
+} else {
+    echo "Aucune exécution récente trouvée"
+}
+
+echo ""
+echo "✅ Auto-sync actif - Surveillance Docker Hub toutes les 5 minutes"
 ```
 ---
 
